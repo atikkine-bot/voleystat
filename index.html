@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#dcebe2">
+  <meta name="theme-color" content="#002e7a">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Волейстат">
   <title>Волейстат</title>
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="manifest" href="manifest.webmanifest">
   <style>
-    :root { color-scheme:light; --app-height:100dvh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; }
+    :root { color-scheme:light; --safe-top:env(safe-area-inset-top,0px); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; }
     * { box-sizing:border-box; }
     [hidden] { display:none !important; }
     html,body { position:fixed; inset:0; width:100%; height:100%; margin:0; padding:0; overflow:hidden; overscroll-behavior:none; }
-    body { background:#dcebe2; }
-    /* No safe-area padding on the iframe: the target app owns its own insets. */
-    iframe { position:fixed; top:0; left:0; display:block; width:100%; height:var(--app-height); margin:0; padding:0; border:0; background:#dcebe2; }
-    .status { position:fixed; inset:0; z-index:2; display:grid; place-items:center; overflow:auto; padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px); background:#dcebe2; color:#25312e; text-align:center; }
+    body { background:#002e7a; }
+    /* Keep the app below the iOS status bar; extend its iframe to the screen bottom. */
+    iframe { position:fixed; top:var(--safe-top); bottom:0; left:0; display:block; width:100%; height:calc(100% - var(--safe-top)); margin:0; padding:0; border:0; background:#002e7a; }
+    .status { position:fixed; inset:0; z-index:2; display:grid; place-items:center; overflow:auto; padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px); background:#002e7a; color:#25312e; text-align:center; }
     .card { width:min(34rem,100%); padding:24px; border-radius:22px; background:rgba(255,255,255,.9); box-shadow:0 12px 40px #0002; }
     .icon { width:92px; height:92px; object-fit:contain; border-radius:20px; }
     h1 { margin:14px 0 8px; font-size:1.45rem; }
@@ -71,17 +71,6 @@
       const statusText=document.getElementById('statusText');
       const frame=document.getElementById('appFrame');
       const valid=value=>{try{const u=new URL(value);return u.protocol==='https:'&&!!u.hostname&&!u.username&&!u.password;}catch(_){return false;}};
-      const updateHeight=()=>{
-        const viewport=window.visualViewport;
-        const visual=viewport ? viewport.height : window.innerHeight;
-        const keyboardOpen=window.innerHeight-visual>120;
-        const height=keyboardOpen?visual:Math.max(window.innerHeight,visual);
-        document.documentElement.style.setProperty('--app-height',Math.ceil(height)+'px');
-      };
-      window.addEventListener('resize',updateHeight);
-      window.addEventListener('orientationchange',()=>setTimeout(updateHeight,250));
-      if(window.visualViewport)window.visualViewport.addEventListener('resize',updateHeight);
-      updateHeight();
       let override='';
       try{override=localStorage.getItem(storageKey)||'';}catch(_){}
       const supplied=params.get('app');
