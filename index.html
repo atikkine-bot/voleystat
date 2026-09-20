@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#dcebe2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Волейстат">
+  <title>Волейстат</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root { color-scheme:light; --app-height:100dvh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html,body { position:fixed; inset:0; width:100%; height:100%; margin:0; padding:0; overflow:hidden; overscroll-behavior:none; }
+    body { background:#dcebe2; }
+    /* No safe-area padding on the iframe: the target app owns its own insets. */
+    iframe { position:fixed; top:0; left:0; display:block; width:100%; height:var(--app-height); margin:0; padding:0; border:0; background:#dcebe2; }
+    .status { position:fixed; inset:0; z-index:2; display:grid; place-items:center; overflow:auto; padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px); background:#dcebe2; color:#25312e; text-align:center; }
+    .card { width:min(34rem,100%); padding:24px; border-radius:22px; background:rgba(255,255,255,.9); box-shadow:0 12px 40px #0002; }
+    .icon { width:92px; height:92px; object-fit:contain; border-radius:20px; }
+    h1 { margin:14px 0 8px; font-size:1.45rem; }
+    p { margin:8px 0; line-height:1.45; }
+    code { overflow-wrap:anywhere; }
+    .setup-form { display:grid; gap:12px; margin-top:18px; text-align:left; }
+    label { font-weight:600; }
+    input,button { font:inherit; }
+    input { width:100%; padding:12px; border:1px solid #b5c7bd; border-radius:12px; }
+    button,a.button { display:inline-block; padding:12px 16px; border:0; border-radius:12px; background:#51655f; color:#fff; font-weight:700; text-decoration:none; }
+    .error { min-height:1.2em; color:#a12e29; }
+  </style>
+</head>
+<body>
+  <div class="status" id="status">
+    <div class="card">
+      <img class="icon" src="icons/apple-touch-icon.png" alt="">
+      <h1>Волейстат</h1>
+      <p id="statusText">Открываю приложение…</p>
+      <div id="setup" hidden>
+        <p>Укажите ссылку веб-приложения. Она сохранится только на этом устройстве.</p>
+        <form class="setup-form" id="setupForm">
+          <label for="appUrl">HTTPS-ссылка веб-приложения</label>
+          <input id="appUrl" type="url" inputmode="url" autocomplete="url" placeholder="https:
+          <button type="submit">Подключить приложение</button>
+          <p class="error" id="errorText" role="alert"></p>
+        </form>
+      </div>
+      <div id="failure" hidden>
+        <p>Не удалось подтвердить загрузку. Возможно, сайт недоступен в этой сети или запрещает iframe.</p>
+        <button id="retry" type="button">Повторить</button>
+        <a id="originalLink" class="button" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+      </div>
+    </div>
+  </div>
+  <iframe id="appFrame" title="Волейстат" allow="clipboard-read; clipboard-write" hidden></iframe>
+  <script>
+    (() => {
+      'use strict';
+      const config={"appUrl":"https://script.google.com/macros/s/AKfycbxpf9_LSomLSA4qj3LOI9KwzImkXLMCJhvPWUYRflZ4BthNpJMN65ZWuIIwCThCwBN8/exec","embedParam":true};
+      // A new baked URL must not be shadowed by a manual value from an older deployment.
+      const storageKey='launcher-override:'+location.pathname+':'+config.appUrl;
+      const params=new URLSearchParams(location.search);
+      const form=document.getElementById('setupForm');
+      const input=document.getElementById('appUrl');
+      const error=document.getElementById('errorText');
+      const setup=document.getElementById('setup');
+      const status=document.getElementById('status');
+      const statusText=document.getElementById('statusText');
+      const frame=document.getElementById('appFrame');
+      const valid=value=>{try{const u=new URL(value);return u.protocol==='https:'&&!!u.hostname&&!u.username&&!u.password;}catch(_){return false;}};
+      const updateHeight=()=>{
+        const viewport=window.visualViewport;
+        const visual=viewport ? viewport.height : window.innerHeight;
+        const keyboardOpen=window.innerHeight-visual>120;
+        const height=keyboardOpen?visual:Math.max(window.innerHeight,visual);
+        document.documentElement.style.setProperty('--app-height',Math.ceil(height)+'px');
+      };
+      window.addEventListener('resize',updateHeight);
+      window.addEventListener('orientationchange',()=>setTimeout(updateHeight,250));
+      if(window.visualViewport)window.visualViewport.addEventListener('resize',updateHeight);
+      updateHeight();
+      let override='';
+      try{override=localStorage.getItem(storageKey)||'';}catch(_){}
+      const supplied=params.get('app');
+      if(supplied&&valid(supplied)){
+        override=supplied;
+        try{localStorage.setItem(storageKey,override);}catch(_){}
+        params.delete('app');history.replaceState(null,'',location.pathname+(params.toString()?'?'+params:'')+location.hash);
+      }
+      const configured=valid(config.appUrl)?config.appUrl:'';
+      const url=valid(override)?override:configured;
+      const showSetup=()=>{frame.hidden=true;status.hidden=false;setup.hidden=false;statusText.hidden=true;input.value=url;};
+      form.addEventListener('submit',event=>{
+        event.preventDefault();const next=input.value.trim();
+        if(!valid(next)){error.textContent='Нужна полная HTTPS-ссылка.';return;}
+        try{localStorage.setItem(storageKey,next);}catch(_){}
+        params.delete('setup');history.replaceState(null,'',location.pathname+(params.toString()?'?'+params:'')+location.hash);
+        location.reload();
+      });
+      if(params.has('setup')||!url){showSetup();return;}
+      let target=new URL(url);
+      if(config.embedParam && target.hostname==='script.google.com')target.searchParams.set('embed','1');
+      document.getElementById('originalLink').href=url;
+      document.getElementById('retry').onclick=()=>location.reload();
+      const timeout=setTimeout(()=>{
+        status.hidden=false;document.getElementById('failure').hidden=false;
+        statusText.textContent='Приложение не открылось.';
+      },12000);
+      frame.addEventListener('load',()=>{clearTimeout(timeout);status.hidden=true;},{once:true});
+      frame.hidden=false;frame.src=target.href;
+    })();
+  </script>
+</body>
+</html>

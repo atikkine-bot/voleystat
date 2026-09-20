@@ -1,0 +1,17 @@
+{
+  "name": "Волейстат",
+  "short_name": "Волейстат",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#dcebe2",
+  "theme_color": "#dcebe2",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
